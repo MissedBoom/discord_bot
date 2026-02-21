@@ -4,6 +4,7 @@ import json
 import os
 import asyncio
 
+bot = commands.Bot(command_prefix=PREFIX, intents=intents, help_command=None)
 # Configuration
 TOKEN = os.getenv("TOKEN")  # Remplace par ton token
 PREFIX = "!"
