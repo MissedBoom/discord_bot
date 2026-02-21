@@ -4,7 +4,6 @@ import json
 import os
 import asyncio
 
-bot = commands.Bot(command_prefix=PREFIX, intents=intents, help_command=None)
 # Configuration
 TOKEN = os.getenv("TOKEN")  # Remplace par ton token
 PREFIX = "!"
@@ -23,7 +22,7 @@ def save_scores(scores):
 # Initialisation du bot
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix=PREFIX, intents=intents)
+bot = commands.Bot(command_prefix=PREFIX, intents=intents, help_command=None)
 
 @bot.event
 async def on_ready():
