@@ -363,5 +363,37 @@ async def admin_draw(ctx):
     await asyncio.sleep(5)
     del active_duels[ctx.channel.id]
     await ctx.channel.delete()
+
+@bot.command(name="help")
+async def help_command(ctx):
+    """Affiche la liste des commandes disponibles"""
+    embed = discord.Embed(title="📖 Commandes disponibles", color=0x5865f2)
+    
+    embed.add_field(
+        name="🎮 Commandes joueurs",
+        value=(
+            "`!duel @joueur` — Défier un joueur (dans #duel uniquement)\n"
+            "`!leaderboard` — Afficher le classement\n"
+            "`!points @joueur` — Voir les points d'un joueur\n"
+            "`!result` — Déclarer le résultat d'un duel (dans le channel du duel)"
+        ),
+        inline=False
+    )
+
+    if ctx.author.guild_permissions.administrator:
+        embed.add_field(
+            name="🔒 Commandes admin",
+            value=(
+                "`!addpoints @joueur X` — Ajouter des points\n"
+                "`!removepoints @joueur X` — Retirer des points\n"
+                "`!reset @joueur` — Remettre un joueur à zéro\n"
+                "`!winner @joueur` — Déclarer un vainqueur (litige)\n"
+                "`!draw` — Déclarer un match nul (litige)"
+            ),
+            inline=False
+        )
+
+    embed.set_footer(text="Tape !help pour revoir cette liste")
+    await ctx.send(embed=embed)
     
 bot.run(TOKEN)
