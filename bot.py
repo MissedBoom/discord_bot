@@ -288,6 +288,9 @@ class ResultView(discord.ui.View):
 @bot.command()
 async def duel(ctx, opponent: discord.Member):
     """Lance un défi à un autre joueur"""
+    if ctx.channel.name != "duel":
+        await ctx.send("❌ Cette commande ne peut être utilisée que dans le salon **#duel** !", delete_after=5)
+        return
     if opponent == ctx.author:
         await ctx.send("Tu ne peux pas te défier toi-même !")
         return
