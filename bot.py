@@ -360,5 +360,76 @@ async def admin_draw(interaction: discord.Interaction):
     del active_duels[interaction.channel.id]
     await interaction.channel.delete()
 
+# ─────────────────────────────────────────────
+# FAIBLESSES
+# ─────────────────────────────────────────────
 
+def load_faiblesses():
+    if os.path.exists("faiblesses.json"):
+        with open("faiblesses.json", "r") as f:
+            return json.load(f)
+    return {}
+
+def save_faiblesses(faiblesses):
+    with open("faiblesses.json", "w") as f:
+        json.dump(faiblesses, f, indent=4)
+
+# Stocke les utilisateurs en attente d'ajout
+attente_faiblesse = set()
+
+faiblesse_group = app_commands.Group(name="faiblesse", description="Gère tes faiblesses")
+
+@faiblesse_group.command(name="ajouter", description="Ajoute des faiblesses à ta liste")
+async def faiblesse_ajouter(interaction: discord.Interaction):
+    attente_faiblesse.add(interaction.user.id)
+    await interaction.response.send_message(
+        "✏️ Envoie ton prochain message avec ta liste de faiblesses. Il sera enregistré automatiquement !",
+        ephemeral=True
+    )
+
+@faiblesse_group.command(name="effacer", description="Efface toute ta liste de faiblesses")
+async def faiblesse_effacer(interaction: discord.Interaction):
+    faiblesses = load_faiblesses()
+    faiblesses[str(interaction.user.id)] = ""
+    save_faiblesses(faiblesses)
+    await interaction.response.send_message("🗑️ Ta liste de faiblesses a été effacée.", ephemeral=True)
+
+bot.tree.add_command(faiblesse_group)
+
+@bot.tree.command(name="faiblesse", description="Affiche la liste de faiblesses d'un joueur")
+@app_commands.describe(membre="Le joueur dont tu veux voir les faiblesses")
+async def faiblesses(interaction: discord.Interaction, membre: discord.Member):
+    faiblesses_data = load_faiblesses()
+    contenu = faiblesses_data.get(str(membre.id), "")
+    if not contenu:
+        await interaction.response.send_message(
+            f"📋 **{membre.display_name}** n'a pas encore renseigné ses faiblesses."
+        )
+        return
+    embed = discord.Embed(
+        title=f"📋 Faiblesses de {membre.display_name}",
+        description=contenu,
+        color=0x5865f2
+    )
+    await interaction.response.send_message(embed=embed)
+
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+    if message.author.id in attente_faiblesse:
+        attente_faiblesse.remove(message.author.id)
+        faiblesses = load_faiblesses()
+        user_id = str(message.author.id)
+        # Ajouter à la liste existante
+        if faiblesses.get(user_id):
+            faiblesses[user_id] += "\n" + message.content
+        else:
+            faiblesses[user_id] = message.content
+        save_faiblesses(faiblesses)
+        await message.reply("✅ Tes faiblesses ont bien été enregistrées !")
+        await message.delete()
+        return
+    await bot.process_commands(message)
+    
 bot.run(TOKEN)
