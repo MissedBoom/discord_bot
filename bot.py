@@ -396,9 +396,9 @@ async def faiblesse_effacer(interaction: discord.Interaction):
 
 bot.tree.add_command(faiblesse_group)
 
-@bot.tree.command(name="faiblesse", description="Affiche la liste de faiblesses d'un joueur")
+@faiblesse_group.command(name="voir", description="Affiche la liste de faiblesses d'un joueur")
 @app_commands.describe(membre="Le joueur dont tu veux voir les faiblesses")
-async def faiblesses(interaction: discord.Interaction, membre: discord.Member):
+async def faiblesse_voir(interaction: discord.Interaction, membre: discord.Member):
     faiblesses_data = load_faiblesses()
     contenu = faiblesses_data.get(str(membre.id), "")
     if not contenu:
@@ -412,7 +412,7 @@ async def faiblesses(interaction: discord.Interaction, membre: discord.Member):
         color=0x5865f2
     )
     await interaction.response.send_message(embed=embed)
-
+    
 @bot.event
 async def on_message(message):
     if message.author.bot:
