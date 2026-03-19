@@ -210,47 +210,68 @@ def save_saison(data):
 async def fin_de_saison(guild):
     scores = load_scores()
     saison = load_saison()
+    numero = saison["numero"]
 
-    # Trouver le vainqueur
-    if scores:
-        winner_id = max(scores, key=scores.get)
-        winner_score = scores[winner_id]
+    # Trier le classement
+    sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+
+    # Couleurs et noms pour le top 3
+    top3_config = [
+        {"label": f"🥇 Top 1 — Saison {numero}", "couleur": 0xFFD700},
+        {"label": f"🥈 Top 2 — Saison {numero}", "couleur": 0xC0C0C0},
+        {"label": f"🥉 Top 3 — Saison {numero}", "couleur": 0xCD7F32},
+    ]
+
+    top3_mentions = []
+
+    for i, config in enumerate(top3_config):
+        if i >= len(sorted_scores):
+            break
+        user_id, score = sorted_scores[i]
+
+        # Créer le rôle
+        role = await guild.create_role(
+            name=config["label"],
+            color=discord.Color(config["couleur"]),
+            reason=f"Fin de saison {numero}"
+        )
+
+        # Attribuer le rôle au joueur
         try:
-            winner = await bot.fetch_user(int(winner_id))
-            winner_name = winner.display_name
+            member = guild.get_member(int(user_id)) or await guild.fetch_member(int(user_id))
+            await member.add_roles(role)
+            top3_mentions.append(f"{['🥇','🥈','🥉'][i]} {member.display_name} — {score} pts")
         except:
-            winner_name = "Joueur inconnu"
-    else:
-        winner_name = None
-        winner_score = 0
+            top3_mentions.append(f"{['🥇','🥈','🥉'][i]} Joueur inconnu — {score} pts")
 
     # Annoncer dans le salon
     channel = discord.utils.get(guild.text_channels, name=ANNOUNCE_CHANNEL)
     if channel:
         embed = discord.Embed(
-            title=f"🏁 Fin de la Saison {saison['numero']} !",
+            title=f"🏁 Fin de la Saison {numero} !",
             color=0xf1c40f
         )
-        if winner_name:
+        if top3_mentions:
+            podium = "\n".join(top3_mentions)
             embed.description = (
-                f"🏆 **Vainqueur : {winner_name}** avec **{winner_score} points** !\n\n"
-                f"Félicitations à tous les participants !\n"
-                f"La Saison {saison['numero'] + 1} commence maintenant. 🚀"
+                f"**Podium de la saison :**\n{podium}\n\n"
+                f"Les rôles ont été attribués ! 🎖️\n"
+                f"La Saison {numero + 1} peut maintenant commencer avec `/saison demarrer` 🚀"
             )
         else:
             embed.description = (
                 f"Aucun score cette saison.\n"
-                f"La Saison {saison['numero'] + 1} commence maintenant. 🚀"
+                f"La Saison {numero + 1} peut maintenant commencer avec `/saison demarrer` 🚀"
             )
         await channel.send(embed=embed)
 
-    # Reset des scores et nouvelle saison
+    # Reset des scores et passage à la saison suivante
     save_scores({})
     save_saison({
-        "numero": saison["numero"] + 1,
-        "debut": datetime.utcnow().isoformat()
+        "numero": numero + 1,
+        "debut": None
     })
-
+    
 # Tâche automatique — vérifie chaque jour si 30 jours sont écoulés
 @tasks.loop(hours=24)
 async def check_saison():
