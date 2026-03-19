@@ -184,6 +184,112 @@ class ResultView(discord.ui.View):
         active_duels[self.duel_channel.id]["votes"] = self.votes
         await self.process_votes(interaction)
 
+# ─────────────────────────────────────────────
+# SAISONS
+# ─────────────────────────────────────────────
+
+ANNOUNCE_CHANNEL = "saison"
+
+def load_saison():
+    if os.path.exists("saison.json"):
+        with open("saison.json", "r") as f:
+            return json.load(f)
+    # Première fois : on initialise
+    data = {
+        "numero": 1,
+        "debut": datetime.utcnow().isoformat()
+    }
+    save_saison(data)
+    return data
+
+def save_saison(data):
+    with open("saison.json", "w") as f:
+        json.dump(data, f, indent=4)
+
+async def fin_de_saison(guild):
+    scores = load_scores()
+    saison = load_saison()
+
+    # Trouver le vainqueur
+    if scores:
+        winner_id = max(scores, key=scores.get)
+        winner_score = scores[winner_id]
+        try:
+            winner = await bot.fetch_user(int(winner_id))
+            winner_name = winner.display_name
+        except:
+            winner_name = "Joueur inconnu"
+    else:
+        winner_name = None
+        winner_score = 0
+
+    # Annoncer dans le salon
+    channel = discord.utils.get(guild.text_channels, name=ANNOUNCE_CHANNEL)
+    if channel:
+        embed = discord.Embed(
+            title=f"🏁 Fin de la Saison {saison['numero']} !",
+            color=0xf1c40f
+        )
+        if winner_name:
+            embed.description = (
+                f"🏆 **Vainqueur : {winner_name}** avec **{winner_score} points** !\n\n"
+                f"Félicitations à tous les participants !\n"
+                f"La Saison {saison['numero'] + 1} commence maintenant. 🚀"
+            )
+        else:
+            embed.description = (
+                f"Aucun score cette saison.\n"
+                f"La Saison {saison['numero'] + 1} commence maintenant. 🚀"
+            )
+        await channel.send(embed=embed)
+
+    # Reset des scores et nouvelle saison
+    save_scores({})
+    save_saison({
+        "numero": saison["numero"] + 1,
+        "debut": datetime.utcnow().isoformat()
+    })
+
+# Tâche automatique — vérifie chaque jour si 30 jours sont écoulés
+@tasks.loop(hours=24)
+async def check_saison():
+    saison = load_saison()
+    debut = datetime.fromisoformat(saison["debut"])
+    if (datetime.utcnow() - debut).days >= 30:
+        for guild in bot.guilds:
+            await fin_de_saison(guild)
+
+@check_saison.before_loop
+async def before_check_saison():
+    await bot.wait_until_ready()
+
+# Commandes saison
+saison_group = app_commands.Group(name="saison", description="Gère les saisons")
+
+@saison_group.command(name="info", description="Affiche les infos de la saison en cours")
+async def saison_info(interaction: discord.Interaction):
+    saison = load_saison()
+    debut = datetime.fromisoformat(saison["debut"])
+    jours_ecoules = (datetime.utcnow() - debut).days
+    jours_restants = max(0, 30 - jours_ecoules)
+    embed = discord.Embed(
+        title=f"📅 Saison {saison['numero']}",
+        description=(
+            f"🗓️ Début : <t:{int(debut.timestamp())}:D>\n"
+            f"⏳ Jours écoulés : **{jours_ecoules}/30**\n"
+            f"🔜 Fin dans : **{jours_restants} jours**"
+        ),
+        color=0x5865f2
+    )
+    await interaction.response.send_message(embed=embed)
+
+@saison_group.command(name="forcer", description="[Admin] Force la fin de la saison immédiatement")
+@app_commands.checks.has_permissions(administrator=True)
+async def saison_forcer(interaction: discord.Interaction):
+    await interaction.response.send_message("⏳ Fin de saison en cours...")
+    await fin_de_saison(interaction.guild)
+
+bot.tree.add_command(saison_group)
 
 # ─────────────────────────────────────────────
 # EVENTS
