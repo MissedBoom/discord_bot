@@ -196,14 +196,13 @@ def load_saison():
     if os.path.exists("saison.json"):
         with open("saison.json", "r") as f:
             return json.load(f)
-    # Première fois : on initialise
     data = {
         "numero": 1,
-        "debut": datetime.utcnow().isoformat()
+        "debut": None
     }
     save_saison(data)
     return data
-
+    
 def save_saison(data):
     with open("saison.json", "w") as f:
         json.dump(data, f, indent=4)
@@ -256,6 +255,8 @@ async def fin_de_saison(guild):
 @tasks.loop(hours=24)
 async def check_saison():
     saison = load_saison()
+    if not saison["debut"]:
+        return
     debut = datetime.fromisoformat(saison["debut"])
     if (datetime.utcnow() - debut).days >= 30:
         for guild in bot.guilds:
@@ -290,7 +291,16 @@ async def saison_info(interaction: discord.Interaction):
 async def saison_forcer(interaction: discord.Interaction):
     await interaction.response.send_message("⏳ Fin de saison en cours...")
     await fin_de_saison(interaction.guild)
-
+@saison_group.command(name="demarrer", description="[Admin] Démarre une nouvelle saison maintenant")
+@app_commands.checks.has_permissions(administrator=True)
+async def saison_demarrer(interaction: discord.Interaction):
+    saison = load_saison()
+    saison["debut"] = datetime.utcnow().isoformat()
+    save_saison(saison)
+    await interaction.response.send_message(
+        f"🚀 **La Saison {saison['numero']} vient de commencer !**\n"
+        f"Elle se terminera automatiquement dans 30 jours, ou quand tu utiliseras `/saison forcer`."
+    )
 bot.tree.add_command(saison_group)
 
 # ─────────────────────────────────────────────
